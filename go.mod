@@ -1,4 +1,4 @@
-module github.com/yarlson/chiprom
+module github.com/eznd-go/chiprom
 
 go 1.20
 

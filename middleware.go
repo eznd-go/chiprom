@@ -5,6 +5,7 @@ package chiprom
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -44,7 +45,7 @@ func NewMiddleware(name string, buckets ...float64) func(next http.Handler) http
 			Help:        "How many HTTP requests processed, partitioned by status code, method and HTTP path.",
 			ConstLabels: prometheus.Labels{"service": name},
 		},
-		[]string{"code", "method", "path"},
+		[]string{"code", "status", "method", "path"},
 	)
 	prometheus.MustRegister(m.reqs)
 
@@ -57,7 +58,7 @@ func NewMiddleware(name string, buckets ...float64) func(next http.Handler) http
 		ConstLabels: prometheus.Labels{"service": name},
 		Buckets:     buckets,
 	},
-		[]string{"code", "method", "path"},
+		[]string{"code", "status", "method", "path"},
 	)
 	prometheus.MustRegister(m.latency)
 	return m.handler
@@ -69,8 +70,8 @@ func (c Middleware) handler(next http.Handler) http.Handler {
 		start := time.Now()
 		ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 		next.ServeHTTP(ww, r)
-		c.reqs.WithLabelValues(http.StatusText(ww.Status()), r.Method, r.URL.Path).Inc()
-		c.latency.WithLabelValues(http.StatusText(ww.Status()), r.Method, r.URL.Path).Observe(float64(time.Since(start).Nanoseconds()) / 1000000)
+		c.reqs.WithLabelValues(strconv.Itoa(ww.Status()), http.StatusText(ww.Status()), r.Method, r.URL.Path).Inc()
+		c.latency.WithLabelValues(strconv.Itoa(ww.Status()), http.StatusText(ww.Status()), r.Method, r.URL.Path).Observe(float64(time.Since(start).Nanoseconds()) / 1000000)
 	}
 	return http.HandlerFunc(fn)
 }
@@ -86,7 +87,7 @@ func NewPatternMiddleware(name string, buckets ...float64) func(next http.Handle
 			Help:        "How many HTTP requests processed, partitioned by status code, method and HTTP path (with patterns).",
 			ConstLabels: prometheus.Labels{"service": name},
 		},
-		[]string{"code", "method", "path"},
+		[]string{"code", "status", "method", "path"},
 	)
 	prometheus.MustRegister(m.reqs)
 
@@ -99,7 +100,7 @@ func NewPatternMiddleware(name string, buckets ...float64) func(next http.Handle
 		ConstLabels: prometheus.Labels{"service": name},
 		Buckets:     buckets,
 	},
-		[]string{"code", "method", "path"},
+		[]string{"code", "status", "method", "path"},
 	)
 	prometheus.MustRegister(m.latency)
 	return m.patternHandler
@@ -116,8 +117,8 @@ func (c Middleware) patternHandler(next http.Handler) http.Handler {
 		routePattern := strings.Join(rctx.RoutePatterns, "")
 		routePattern = strings.Replace(routePattern, "/*/", "/", -1)
 
-		c.reqs.WithLabelValues(http.StatusText(ww.Status()), r.Method, routePattern).Inc()
-		c.latency.WithLabelValues(http.StatusText(ww.Status()), r.Method, routePattern).Observe(float64(time.Since(start).Nanoseconds()) / 1000000)
+		c.reqs.WithLabelValues(strconv.Itoa(ww.Status()), http.StatusText(ww.Status()), r.Method, routePattern).Inc()
+		c.latency.WithLabelValues(strconv.Itoa(ww.Status()), http.StatusText(ww.Status()), r.Method, routePattern).Observe(float64(time.Since(start).Nanoseconds()) / 1000000)
 	}
 	return http.HandlerFunc(fn)
 }
